@@ -51,13 +51,17 @@ export const ContactForm = () => {
 
     try {
       const { error } = await supabase.from("contact_submissions").insert([contactData]);
+      if (error) {
+        toast({ title: "Submission failed", description: error.message || "Could not send your message.", variant: "destructive" });
+        return;
+      }
       // Invoke server-side notify for autoresponder and admin alerts
       try {
         await supabase.functions.invoke("notify", {
           body: { type: "contact_submission", userEmail: form.email, data: contactData },
         });
       } catch {}
-      // Show success regardless of supabase config
+      // Show success
       toast({ 
         title: "Message sent successfully!", 
         description: "Thank you for contacting us. We'll get back to you soon." 
@@ -72,10 +76,11 @@ export const ContactForm = () => {
         inquiryType: "",
         message: "",
       });
-    } catch (err) {
+    } catch (err: any) {
       toast({ 
-        title: "Message sent successfully!", 
-        description: "Thank you for contacting us. We'll get back to you soon." 
+        title: "Submission failed", 
+        description: err?.message || "Could not send your message.",
+        variant: "destructive"
       });
       
       // Reset form

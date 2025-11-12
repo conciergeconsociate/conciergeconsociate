@@ -103,8 +103,12 @@ export const ConciergeBookingSection = () => {
 
     try {
       const { error } = await supabase.from("concierge_requests").insert([
-        { name, email: form.email, phone: form.phone, service, message, status: "new" },
+        { name, email: form.email, phone: form.phone, service, message, status: "pending" },
       ]);
+      if (error) {
+        toast({ title: "Submission failed", description: error.message || "Could not save your request.", variant: "destructive" });
+        return;
+      }
       // Subscribe to newsletter if requested
       if (form.newsletter && form.email) {
         try {
@@ -125,11 +129,11 @@ export const ConciergeBookingSection = () => {
           body: { type: "concierge_request", userEmail: form.email, data: { name, email: form.email, phone: form.phone, service, message } },
         });
       } catch {}
-      // Regardless of supabase config, show success
+      // Show success
       toast({ title: "Request submitted", description: "Our team will contact you to finalize your booking." });
-    } catch (err) {
-      toast({ title: "Request submitted", description: "Our team will contact you to finalize your booking." });
-    }
+    } catch (err: any) {
+      toast({ title: "Submission failed", description: err?.message || "Could not submit your request.", variant: "destructive" });
+      }
 
     setForm((f) => ({ ...f, serviceDetails: "", additionalInfo: "", budget: "", dateTime: "" }));
   };

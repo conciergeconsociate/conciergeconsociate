@@ -16,10 +16,35 @@ import { supabase } from "@/lib/supabaseClient";
 
 export default function Contact() {
   const [faqs, setFaqs] = useState(mockFAQs);
+  const [contactInfo, setContactInfo] = useState<any>(mockContactInfo);
+  const [loadingContact, setLoadingContact] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
     (async () => {
+      // Contact info
+      try {
+        const { data, error } = await supabase
+          .from("contact_info")
+          .select("address,emails,phones,facebook,instagram,whatsapp")
+          .limit(1)
+          .maybeSingle();
+        if (!error && data && isMounted) {
+          const mapped = {
+            address: data.address,
+            emails: Array.isArray(data.emails) ? data.emails : [],
+            phones: Array.isArray(data.phones) ? data.phones : [],
+            socialMedia: {
+              facebook: data.facebook || mockContactInfo.socialMedia.facebook,
+              instagram: data.instagram || mockContactInfo.socialMedia.instagram,
+              whatsapp: data.whatsapp || mockContactInfo.socialMedia.whatsapp,
+            },
+          };
+          setContactInfo(mapped);
+        }
+      } catch {}
+      if (isMounted) setLoadingContact(false);
+
       try {
         const { data, error } = await supabase
           .from("faqs")
@@ -74,7 +99,11 @@ export default function Contact() {
                 <CardTitle className="text-primary">Location</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">{mockContactInfo.address}</p>
+                {loadingContact ? (
+                  <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+                ) : (
+                  <p className="text-muted-foreground">{contactInfo.address}</p>
+                )}
               </CardContent>
             </Card>
 
@@ -84,9 +113,16 @@ export default function Contact() {
                 <CardTitle className="text-primary">Emails</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {mockContactInfo.emails.map((email) => (
-                  <p key={email} className="text-muted-foreground">{email}</p>
-                ))}
+                {loadingContact ? (
+                  <>
+                    <div className="h-3 w-40 bg-muted animate-pulse rounded" />
+                    <div className="h-3 w-28 bg-muted animate-pulse rounded" />
+                  </>
+                ) : (
+                  contactInfo.emails.map((email: string) => (
+                    <p key={email} className="text-muted-foreground">{email}</p>
+                  ))
+                )}
               </CardContent>
             </Card>
 
@@ -96,9 +132,16 @@ export default function Contact() {
                 <CardTitle className="text-primary">Phone Numbers</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {mockContactInfo.phones.map((phone) => (
-                  <p key={phone} className="text-muted-foreground">{phone}</p>
-                ))}
+                {loadingContact ? (
+                  <>
+                    <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                    <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                  </>
+                ) : (
+                  contactInfo.phones.map((phone: string) => (
+                    <p key={phone} className="text-muted-foreground">{phone}</p>
+                  ))
+                )}
               </CardContent>
             </Card>
           </div>

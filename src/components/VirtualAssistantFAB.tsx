@@ -56,25 +56,19 @@ export const VirtualAssistantFAB = () => {
 
     const service = form.serviceType === "Other (Please specify below)" ? (form.otherService || "Other") : form.serviceType;
     const payload = {
-      salutation: form.salutation || null,
-      priority: form.priority || null,
-      first_name: form.firstName,
-      last_name: form.lastName,
+      name: `${form.salutation ? form.salutation + " " : ""}${form.firstName} ${form.lastName}`.trim(),
       email: form.email,
+      phone: null,
       service,
-      other_service: form.otherService || null,
-      duration: form.duration || null,
-      hear_about: form.hearAbout || null,
-      deadline: form.deadline ? form.deadline : null,
-      budget: form.budget || null,
-      additional_info: form.additionalInfo || null,
-      task_details: form.taskDetails,
-      newsletter: !!form.newsletter,
       status: "pending",
     };
 
     try {
       const { error } = await supabase.from("virtual_assistance_requests").insert([payload]);
+      if (error) {
+        toast({ title: "Submission failed", description: error.message || "Could not save your request.", variant: "destructive" });
+        return;
+      }
       // Optional: subscribe to newsletter if requested
       if (form.newsletter && form.email) {
         try {
@@ -92,13 +86,23 @@ export const VirtualAssistantFAB = () => {
       // Invoke server-side notify for autoresponder and admin alerts
       try {
         await supabase.functions.invoke("notify", {
-          body: { type: "virtual_assistance_request", userEmail: form.email, data: payload },
+          body: { type: "virtual_assistance_request", userEmail: form.email, data: {
+            ...payload,
+            other_service: form.otherService || null,
+            priority: form.priority || null,
+            duration: form.duration || null,
+            hear_about: form.hearAbout || null,
+            deadline: form.deadline ? form.deadline : null,
+            budget: form.budget || null,
+            additional_info: form.additionalInfo || null,
+            task_details: form.taskDetails,
+          } },
         });
       } catch {}
-      // Show success regardless of supabase config
+      // Show success
       toast({ title: "Request submitted", description: "Our team will review your request and reach out shortly." });
-    } catch {
-      toast({ title: "Request submitted", description: "Our team will review your request and reach out shortly." });
+    } catch (err: any) {
+      toast({ title: "Submission failed", description: err?.message || "Could not submit your request.", variant: "destructive" });
     }
 
     setOpen(false);

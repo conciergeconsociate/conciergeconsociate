@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import Services from "./pages/Services";
 import Membership from "./pages/Membership";
@@ -21,6 +21,11 @@ import BlogView from "@/pages/BlogView";
 
 const queryClient = new QueryClient();
 
+const AssistantFABGate = () => {
+  const loc = useLocation();
+  return loc.pathname.startsWith("/admin") ? null : <VirtualAssistantFAB />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -29,8 +34,8 @@ const App = () => (
       <ConnectivityGate />
       <IpTracker />
       <BrowserRouter>
-        {/* Floating Action Button for Virtual Assistant */}
-        <VirtualAssistantFAB />
+        {/* Floating Action Button for Virtual Assistant (hidden on admin routes) */}
+        <AssistantFABGate />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/services" element={<Services />} />
