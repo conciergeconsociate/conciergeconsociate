@@ -21,7 +21,8 @@ export default function ConnectivityGate() {
     }
   }, [online]);
 
-  if (online) return null;
+  // Do not render while checking to avoid initial flash on page reload
+  if (online || checking) return null;
 
   return (
     <div className="fixed inset-0 z-[1000] bg-background/90 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">

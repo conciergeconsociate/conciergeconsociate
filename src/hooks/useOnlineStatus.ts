@@ -5,8 +5,9 @@ import { useEffect, useRef, useState } from "react";
  * to a same-origin resource (robots.txt) to avoid CORS issues.
  */
 export function useOnlineStatus(pingIntervalMs: number = 15000, timeoutMs: number = 3000) {
-  const [online, setOnline] = useState<boolean>(false);
-  const [checking, setChecking] = useState<boolean>(true);
+  // Assume online by default to avoid initial overlay flash on page load
+  const [online, setOnline] = useState<boolean>(true);
+  const [checking, setChecking] = useState<boolean>(false);
   const intervalRef = useRef<number | null>(null);
 
   const checkConnectivity = async () => {
@@ -42,8 +43,9 @@ export function useOnlineStatus(pingIntervalMs: number = 15000, timeoutMs: numbe
 
   useEffect(() => {
     const onOnline = () => {
-      // Verify actual internet reachability before marking online
-      setOnline(false);
+      // Immediately mark online, then optionally verify reachability in background
+      setOnline(true);
+      // Run a connectivity check without toggling to offline first
       checkConnectivity();
     };
     const onOffline = () => setOnline(false);
