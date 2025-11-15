@@ -18,6 +18,7 @@ import IpTracker from "@/components/IpTracker";
 import ServiceDetails from "./pages/ServiceDetails";
 import VenueDetails from "./pages/VenueDetails";
 import BlogView from "@/pages/BlogView";
+import { FeatureFlagsProvider } from "@/hooks/useFeatureFlags";
 
 const queryClient = new QueryClient();
 
@@ -33,7 +34,8 @@ const App = () => (
       <Sonner />
       <ConnectivityGate />
       <IpTracker />
-      <BrowserRouter>
+      <FeatureFlagsProvider>
+        <BrowserRouter>
         {/* Floating Action Button for Virtual Assistant (hidden on admin routes) */}
         <AssistantFABGate />
         <Routes>
@@ -51,7 +53,8 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </FeatureFlagsProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

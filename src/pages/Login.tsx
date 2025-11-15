@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { ForgotPasswordModal } from "@/components/modals/ForgotPasswordModal";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,9 +71,15 @@ export default function Login() {
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
+              <div className="text-center">
+                <button type="button" className="text-sm text-primary underline" onClick={() => setForgotOpen(true)}>
+                  Forgot your password?
+                </button>
+              </div>
             </form>
           </CardContent>
         </Card>
+        <ForgotPasswordModal open={forgotOpen} onOpenChange={setForgotOpen} />
       </main>
       <Footer />
     </div>

@@ -94,6 +94,50 @@ function renderUserTemplate(type: string, data: Record<string, unknown>) {
     }
     default:
       return { subject: "We received your submission", html: "<p>Thank you.</p>" };
+    case "password_reset_requested": {
+      return {
+        subject: "Password reset requested",
+        html: `
+          <div style="font-family:Arial, sans-serif">
+            <p>We received a request to reset the password for your account.</p>
+            <p>If you initiated this request, please check your inbox for the official reset link.</p>
+            <p>If you did not request a password reset, you can safely ignore this email.</p>
+            <p>Best regards,<br/>Consociate Concierge</p>
+          </div>
+        `,
+      };
+    }
+    case "subscription_purchase": {
+      const planName = data.plan_name ?? data.plan?.name ?? "your selected plan";
+      const price = data.discounted_price ?? data.final_price ?? data.price ?? "";
+      return {
+        subject: `Welcome — ${String(planName)}`,
+        html: `
+          <div style="font-family:Arial, sans-serif">
+            <p>Thank you for choosing Consociate Concierge.</p>
+            <p>Your subscription to <strong>${planName}</strong> was received.</p>
+            ${price ? `<p>Amount: ₦${Number(price).toLocaleString()}</p>` : ""}
+            <p>We’ve sent you a password reset link to set your account password.</p>
+            <p>We’re excited to serve you.</p>
+            <p>Best regards,<br/>Consociate Concierge</p>
+          </div>
+        `,
+      };
+    }
+    case "account_created": {
+      const name = data.full_name ?? data.name ?? "there";
+      return {
+        subject: "Your account has been created",
+        html: `
+          <div style="font-family:Arial, sans-serif">
+            <p>Hi ${name},</p>
+            <p>Your account was successfully created. A password reset link has been emailed separately so you can set your password.</p>
+            <p>If you need assistance, just reply to this email.</p>
+            <p>Best regards,<br/>Consociate Concierge</p>
+          </div>
+        `,
+      };
+    }
   }
 }
 

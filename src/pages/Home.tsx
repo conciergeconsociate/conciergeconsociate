@@ -17,6 +17,8 @@ import { ChevronLeft, ChevronRight, ImageOff, HelpCircle } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useAuth } from "@/hooks/useAuth";
 
 // Simple blur-up image helper
 function BlurImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
@@ -39,6 +41,9 @@ function BlurImage({ src, alt, className }: { src: string; alt: string; classNam
 
 export default function Home() {
   const navigate = useNavigate();
+  const { flags } = useFeatureFlags();
+  const { userId } = useAuth();
+  const isLoggedIn = !!userId;
 
   const [venues, setVenues] = useState(mockVenues);
   const [services, setServices] = useState(mockServices);
@@ -156,6 +161,7 @@ export default function Home() {
         </section>
 
         {/* Featured Venues Section */}
+        {flags.venueVisible && (
         <section className="py-16 bg-secondary/10">
           <div className="container">
             <div className="flex items-center justify-between mb-8">
@@ -224,6 +230,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+        )}
 
         {/* About Section */}
         <section className="py-16">
@@ -294,8 +301,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Membership Section */}
-        <MembershipPlans />
+        {/* Membership Section (hidden when flag is off for non-auth) */}
+        {(isLoggedIn || flags.membershipVisible) && <MembershipPlans />}
 
         {/* FAQ Section */}
         <section className="py-16">

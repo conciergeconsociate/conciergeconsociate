@@ -13,11 +13,14 @@ import {
 import { mockContactInfo, mockFAQs } from "@/data/mockData";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { Facebook, Instagram, MessageCircle } from "lucide-react";
 
 export default function Contact() {
   const [faqs, setFaqs] = useState(mockFAQs);
   const [contactInfo, setContactInfo] = useState<any>(mockContactInfo);
   const [loadingContact, setLoadingContact] = useState(true);
+  const [loadingFaqs, setLoadingFaqs] = useState(true);
+  const [socialLinks, setSocialLinks] = useState<any>(mockContactInfo.socialMedia);
 
   useEffect(() => {
     let isMounted = true;
@@ -41,10 +44,36 @@ export default function Contact() {
             },
           };
           setContactInfo(mapped);
+          setSocialLinks((prev: any) => ({
+            ...prev,
+            facebook: mapped.socialMedia.facebook,
+            instagram: mapped.socialMedia.instagram,
+            whatsapp: mapped.socialMedia.whatsapp,
+          }));
         }
       } catch {}
       if (isMounted) setLoadingContact(false);
 
+      // Social links (additional sources)
+      try {
+        const { data, error } = await supabase
+          .from("social_links")
+          .select("facebook,instagram,twitter,linkedin,youtube")
+          .limit(1)
+          .maybeSingle();
+        if (!error && data && isMounted) {
+          setSocialLinks({
+            facebook: data.facebook || socialLinks.facebook,
+            instagram: data.instagram || socialLinks.instagram,
+            whatsapp: socialLinks.whatsapp, // remains from contact_info or default
+            twitter: data.twitter || "",
+            linkedin: data.linkedin || "",
+            youtube: data.youtube || "",
+          });
+        }
+      } catch {}
+
+      setLoadingFaqs(true);
       try {
         const { data, error } = await supabase
           .from("faqs")
@@ -55,6 +84,7 @@ export default function Contact() {
           const mapped = (data as any[]).map((f) => ({ id: String(f.id), question: f.question, answer: f.answer }));
           setFaqs(mapped as any);
         }
+        if (isMounted) setLoadingFaqs(false);
       } catch {}
     })();
     return () => {
@@ -145,6 +175,9 @@ export default function Contact() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Compact Social Icons Row */}
+          {/* Removed compact social icon row per request */}
         </div>
       </section>
 
@@ -159,14 +192,22 @@ export default function Contact() {
             <p className="text-lg text-muted-foreground">Everything you need to know</p>
           </div>
 
-          <Accordion type="single" collapsible className="space-y-4">
-            {faqs.map((faq) => (
-              <AccordionItem key={faq.id} value={faq.id}>
-                <AccordionTrigger className="text-left">{faq.question}</AccordionTrigger>
-                <AccordionContent>{faq.answer}</AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+          {loadingFaqs ? (
+            <div className="space-y-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-14 rounded-md bg-muted animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <Accordion type="single" collapsible className="space-y-4">
+              {faqs.map((faq) => (
+                <AccordionItem key={faq.id} value={faq.id}>
+                  <AccordionTrigger className="text-left">{faq.question}</AccordionTrigger>
+                  <AccordionContent>{faq.answer}</AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
         </div>
       </section>
 

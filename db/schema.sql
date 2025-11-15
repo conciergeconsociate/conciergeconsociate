@@ -92,7 +92,7 @@ create policy "Allow public read" on public.testimonials for select using (true)
 create table if not exists public.contact_info (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
-  address text not null,
+  address text[] not null default '{}',
   emails text[] not null default '{}',
   phones text[] not null default '{}',
   facebook text,
@@ -101,6 +101,20 @@ create table if not exists public.contact_info (
 );
 alter table public.contact_info enable row level security;
 create policy "Allow public read" on public.contact_info for select using (true);
+
+-- Social Links (columns per platform to match app queries)
+create table if not exists public.social_links (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  facebook text,
+  instagram text,
+  twitter text,
+  linkedin text,
+  youtube text,
+  whatsapp text
+);
+alter table public.social_links enable row level security;
+create policy "Allow public read" on public.social_links for select using (true);
 
 -- Concierge Requests
 create table if not exists public.concierge_requests (

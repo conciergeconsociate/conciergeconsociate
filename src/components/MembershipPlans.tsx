@@ -4,6 +4,7 @@ import { Check, PackageOpen } from "lucide-react";
 import { mockMembershipPlans } from "@/data/mockData";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { CheckoutModal } from "@/components/modals/CheckoutModal";
 
 export const MembershipPlans = () => {
   type Plan = {
@@ -18,6 +19,8 @@ export const MembershipPlans = () => {
   };
   const [plans, setPlans] = useState<Plan[]>(mockMembershipPlans as Plan[]);
   const [loading, setLoading] = useState(true);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -95,13 +98,14 @@ export const MembershipPlans = () => {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full">Choose {plan.name}</Button>
+                  <Button className="w-full" onClick={() => { setSelectedPlan(plan); setCheckoutOpen(true); }}>Choose {plan.name}</Button>
                 </CardFooter>
               </Card>
             ))}
           </div>
         )}
       </div>
+      <CheckoutModal open={checkoutOpen} onOpenChange={setCheckoutOpen} plan={selectedPlan} />
     </section>
   );
 };

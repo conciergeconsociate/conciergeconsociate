@@ -9,11 +9,15 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { EditProfileModal } from "@/components/modals/EditProfileModal";
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const navigate = useNavigate();
   const { userId, isAdmin, signOut } = useAuth();
+  const { flags } = useFeatureFlags();
 
   // Robust dev fallback: if Supabase isn't configured, reflect local dev session
   const hasSupabase = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -25,20 +29,24 @@ export const Header = () => {
   const effectiveIsAdmin = isAdmin || (!hasSupabase && !!devSession);
   const isLoggedIn = !!effectiveUserId;
 
-  const menuItems = [
+  const baseMenu = [
     { label: "Home", path: "/" },
     { label: "Services", path: "/services" },
-    { label: "Membership", path: "/membership" },
     { label: "Blog", path: "/blog" },
     { label: "About Us", path: "/about" },
     { label: "Contact Us", path: "/contact" },
+  ];
+  const menuItems = [
+    ...baseMenu,
+    // Show Membership link for logged-in users or when flag is visible
+    ...(isLoggedIn || flags.membershipVisible ? [{ label: "Membership", path: "/membership" }] : []),
   ];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center space-x-2">
-          <img src="/brand-logo.svg" alt="Consociate Concierge logo" className="h-8 w-8" />
+          <img src="/brand-logo.svg" alt="Consociate Concierge logo" className="h-10 w-10 md:h-8 md:w-8" />
           <span className="text-xl font-bold text-primary">Consociate Concierge</span>
         </Link>
 
@@ -66,6 +74,7 @@ export const Header = () => {
                   <DropdownMenuItem onClick={() => navigate("/admin")}>Admin Panel</DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => navigate("/membership")}>Membership</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setEditProfileOpen(true)}>Edit Profile</DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={async () => {
                     await signOut();
@@ -77,7 +86,9 @@ export const Header = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="default" onClick={() => navigate("/login")}>Login</Button>
+            flags.loginVisible ? (
+              <Button variant="default" onClick={() => navigate("/login")}>Login</Button>
+            ) : null
           )}
         </nav>
 
@@ -112,6 +123,7 @@ export const Header = () => {
                 {effectiveIsAdmin && (
                   <Button variant="outline" onClick={() => { navigate("/admin"); setMobileMenuOpen(false); }}>Admin Panel</Button>
                 )}
+                <Button variant="outline" onClick={() => { setEditProfileOpen(true); setMobileMenuOpen(false); }}>Edit Profile</Button>
                 <Button
                   variant="default"
                   onClick={async () => {
@@ -124,11 +136,17 @@ export const Header = () => {
                 </Button>
               </div>
             ) : (
-              <Button variant="default" onClick={() => { navigate("/login"); setMobileMenuOpen(false); }}>Login</Button>
+              flags.loginVisible ? (
+                <Button variant="default" onClick={() => { navigate("/login"); setMobileMenuOpen(false); }}>Login</Button>
+              ) : null
             )}
           </div>
         </div>
       )}
+      {/* Edit Profile Modal */}
+      {isLoggedIn ? (
+        <EditProfileModal open={editProfileOpen} onOpenChange={setEditProfileOpen} />
+      ) : null}
     </header>
   );
 };

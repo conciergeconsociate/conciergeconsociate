@@ -43,6 +43,30 @@ on conflict (group_name, key)
     value_text = excluded.value_text,
     value_json = excluded.value_json;
 
+-- Seed default contact info (if none exists, this provides initial values)
+insert into public.contact_info (address, emails, phones, facebook, instagram, whatsapp)
+values (
+  '123 Crafted Ave, Lagos, Nigeria',
+  ARRAY['hello@craftedcore.com'],
+  ARRAY['+2348012345678'],
+  'https://facebook.com/craftedcore',
+  'https://instagram.com/craftedcore',
+  'https://wa.me/2348012345678'
+)
+on conflict do nothing;
+
+-- Seed extended social links
+insert into public.social_links (platform, url, is_active) values
+  ('facebook', 'https://facebook.com/craftedcore', true),
+  ('instagram', 'https://instagram.com/craftedcore', true),
+  ('whatsapp', 'https://wa.me/2348012345678', true),
+  ('twitter', 'https://twitter.com/craftedcore', true),
+  ('linkedin', 'https://www.linkedin.com/company/craftedcore', true),
+  ('youtube', 'https://www.youtube.com/@craftedcore', true)
+on conflict (platform) do update set
+  url = excluded.url,
+  is_active = excluded.is_active;
+
 -- Page hero defaults for main pages
 insert into public.pages (slug, title, path, is_main, is_visible, hero_title, hero_subtitle, hero_background_image, metadata) values
   ('home', 'Home', '/', true, true, 'Crafted Core', 'Elite services and venues, tailored to you.', '/placeholder.svg', '{}'::jsonb),

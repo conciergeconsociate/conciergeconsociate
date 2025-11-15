@@ -1,13 +1,14 @@
 import React, { useEffect } from "react";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
-import { Button } from "./ui/button";
 
 /**
  * Renders a full-screen overlay to prevent interaction when offline.
- * Uses the project's design tokens and UI Button.
+ * Uses the project's design tokens and listens for connectivity changes.
  */
+import { Loader2 } from "lucide-react";
+
 export default function ConnectivityGate() {
-  const { online, checkConnectivity } = useOnlineStatus();
+  const { online, checking } = useOnlineStatus();
 
   useEffect(() => {
     // Prevent background scroll while overlay is visible
@@ -27,16 +28,13 @@ export default function ConnectivityGate() {
       <div className="max-w-md w-full bg-card text-card-foreground border rounded-xl shadow-lg p-6 space-y-4">
         <h2 className="text-xl font-semibold">You’re Offline</h2>
         <p className="text-sm text-muted-foreground">
-          We couldn’t detect an internet connection. Navigation and actions are disabled
-          until you’re back online.
+          We couldn’t detect an internet connection. The app will automatically
+          reconnect and this message will disappear once you’re back online.
         </p>
-        <div className="flex items-center gap-3">
-          <Button onClick={checkConnectivity} variant="default">Retry</Button>
-          <Button onClick={() => window.location.reload()} variant="secondary">Reload</Button>
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>{checking ? "Checking connection…" : "Waiting for internet…"}</span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Tip: check your Wi‑Fi or mobile data, then press Retry.
-        </p>
       </div>
     </div>
   );

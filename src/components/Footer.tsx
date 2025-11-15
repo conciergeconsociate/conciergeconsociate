@@ -1,13 +1,16 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, MessageCircle } from "lucide-react";
+import { Facebook, Instagram, Twitter, Linkedin, Youtube, MessageCircle } from "lucide-react";
 import { mockContactInfo } from "@/data/mockData";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
   const [info, setInfo] = useState<any>(mockContactInfo);
   const [loading, setLoading] = useState(true);
+  const { flags } = useFeatureFlags();
+  const [social, setSocial] = useState<{ facebook?: string; instagram?: string; twitter?: string; linkedin?: string; youtube?: string; whatsapp?: string }>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -15,21 +18,35 @@ export const Footer = () => {
       try {
         const { data, error } = await supabase
           .from("contact_info")
-          .select("address,emails,phones,facebook,instagram,whatsapp")
+          .select("address,emails,phones")
           .limit(1)
           .maybeSingle();
         if (!error && data && isMounted) {
           const mapped = {
-            address: data.address,
+            address: Array.isArray(data.address) ? data.address : (data.address ? [data.address] : []),
             emails: Array.isArray(data.emails) ? data.emails : [],
             phones: Array.isArray(data.phones) ? data.phones : [],
-            socialMedia: {
-              facebook: data.facebook || mockContactInfo.socialMedia.facebook,
-              instagram: data.instagram || mockContactInfo.socialMedia.instagram,
-              whatsapp: data.whatsapp || mockContactInfo.socialMedia.whatsapp,
-            },
           };
           setInfo(mapped);
+        }
+      } catch {}
+      // Load social links from dedicated table and hide absent ones
+      try {
+        const { data: sData, error: sErr } = await supabase
+          .from("social_links")
+          .select("facebook,instagram,twitter,linkedin,youtube,whatsapp")
+          .limit(1)
+          .maybeSingle();
+        if (!sErr && sData && isMounted) {
+          const clean = (v: any) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined);
+          setSocial({
+            facebook: clean(sData.facebook),
+            instagram: clean(sData.instagram),
+            twitter: clean(sData.twitter),
+            linkedin: clean(sData.linkedin),
+            youtube: clean(sData.youtube),
+            whatsapp: clean(sData.whatsapp),
+          });
         }
       } catch {}
       if (isMounted) setLoading(false);
@@ -62,9 +79,11 @@ export const Footer = () => {
               <Link to="/services" className="text-sm opacity-80 hover:text-primary transition-colors">
                 Services
               </Link>
-              <Link to="/membership" className="text-sm opacity-80 hover:text-primary transition-colors">
-                Membership
-              </Link>
+              {flags.membershipVisible && (
+                <Link to="/membership" className="text-sm opacity-80 hover:text-primary transition-colors">
+                  Membership
+                </Link>
+              )}
               <Link to="/blog" className="text-sm opacity-80 hover:text-primary transition-colors">
                 Blog
               </Link>
@@ -89,7 +108,11 @@ export const Footer = () => {
                 </>
               ) : (
                 <>
-                  <p>{info.address}</p>
+                  {Array.isArray(info.address) && info.address.length > 0 ? (
+                    info.address.map((line: string, idx: number) => <p key={idx}>{line}</p>)
+                  ) : (
+                    <p>{info.address}</p>
+                  )}
                   {info.emails.map((email: string, index: number) => (
                     <p key={index}>
                       <a href={`mailto:${email}`} className="hover:text-primary transition-colors">
@@ -108,30 +131,36 @@ export const Footer = () => {
               )}
             </div>
             <div className="flex space-x-4 mt-4">
-              <a
-                href={info.socialMedia.facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="opacity-80 hover:text-primary transition-colors"
-              >
-                <Facebook className="h-5 w-5" />
-              </a>
-              <a
-                href={info.socialMedia.whatsapp}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="opacity-80 hover:text-primary transition-colors"
-              >
-                <MessageCircle className="h-5 w-5" />
-              </a>
-              <a
-                href={info.socialMedia.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="opacity-80 hover:text-primary transition-colors"
-              >
-                <Instagram className="h-5 w-5" />
-              </a>
+              {social.facebook && (
+                <a href={social.facebook} target="_blank" rel="noopener noreferrer" className="opacity-80 hover:text-primary transition-colors">
+                  <Facebook className="h-5 w-5" />
+                </a>
+              )}
+              {social.instagram && (
+                <a href={social.instagram} target="_blank" rel="noopener noreferrer" className="opacity-80 hover:text-primary transition-colors">
+                  <Instagram className="h-5 w-5" />
+                </a>
+              )}
+              {social.twitter && (
+                <a href={social.twitter} target="_blank" rel="noopener noreferrer" className="opacity-80 hover:text-primary transition-colors">
+                  <Twitter className="h-5 w-5" />
+                </a>
+              )}
+              {social.linkedin && (
+                <a href={social.linkedin} target="_blank" rel="noopener noreferrer" className="opacity-80 hover:text-primary transition-colors">
+                  <Linkedin className="h-5 w-5" />
+                </a>
+              )}
+              {social.youtube && (
+                <a href={social.youtube} target="_blank" rel="noopener noreferrer" className="opacity-80 hover:text-primary transition-colors">
+                  <Youtube className="h-5 w-5" />
+                </a>
+              )}
+              {social.whatsapp && (
+                <a href={social.whatsapp} target="_blank" rel="noopener noreferrer" className="opacity-80 hover:text-primary transition-colors">
+                  <MessageCircle className="h-5 w-5" />
+                </a>
+              )}
             </div>
           </div>
         </div>

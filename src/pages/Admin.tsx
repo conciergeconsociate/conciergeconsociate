@@ -19,6 +19,7 @@ import {
   Mail,
   Copy,
   Check,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -110,6 +112,10 @@ export default function Admin() {
   const [vaSearch, setVaSearch] = useState("");
   const [vaStatusFilter, setVaStatusFilter] = useState<string>("all");
   const [selectedVa, setSelectedVa] = useState<Set<string>>(new Set());
+  // VA bulk email
+  const [vaBulkEmailOpen, setVaBulkEmailOpen] = useState(false);
+  const [bulkVaSubject, setBulkVaSubject] = useState("");
+  const [bulkVaBody, setBulkVaBody] = useState("");
   // CSV export helper
   const exportToCsv = (rows: any[], filename: string) => {
     if (!rows || rows.length === 0) return;
@@ -262,11 +268,12 @@ export default function Admin() {
   // Website UI states
   const [websiteTab, setWebsiteTab] = useState<string>("testimonials");
   const [testimonials, setTestimonials] = useState<any[]>([]);
+  const [loadingTestimonials, setLoadingTestimonials] = useState<boolean>(false);
   const [testimonialDialogOpen, setTestimonialDialogOpen] = useState(false);
   const [editingTestimonial, setEditingTestimonial] = useState<any | null>(null);
-  const [testimonialForm, setTestimonialForm] = useState({ name: "", content: "", image: "" });
+  const [testimonialForm, setTestimonialForm] = useState({ name: "", content: "", image: "", rating: 5 });
   const [contactInfo, setContactInfo] = useState<{ address: string; emails: string[]; phones: string[] }>({ address: "", emails: ["",""], phones: ["","",""] });
-  const [socialLinks, setSocialLinks] = useState<{ facebook?: string; instagram?: string; twitter?: string; linkedin?: string; youtube?: string }>({});
+  const [socialLinks, setSocialLinks] = useState<{ facebook?: string; instagram?: string; twitter?: string; linkedin?: string; youtube?: string; whatsapp?: string }>({});
 
   // Subscription states
 const [plans, setPlans] = useState<any[]>([]);
@@ -524,8 +531,8 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
         .select("group_name,key,value_bool")
         .in("key", [
           "auth.login.visible",
-          "features.membership.buttons.visible",
-          "features.venue.buttons.visible",
+          "membership.buttons.visible",
+          "venue.buttons.visible",
         ]);
       if (error) return;
       const map = new Map<string, boolean>(
@@ -533,8 +540,8 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
       );
       setMembershipSettings({
         loginVisible: !!map.get("auth.login.visible"),
-        membershipButtonsVisible: !!map.get("features.membership.buttons.visible"),
-        venueButtonsVisible: !!map.get("features.venue.buttons.visible"),
+        membershipButtonsVisible: !!map.get("membership.buttons.visible"),
+        venueButtonsVisible: !!map.get("venue.buttons.visible"),
       });
     } catch {}
   };
@@ -542,7 +549,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
   const saveMembershipSettings = async () => {
     try {
       const rows = [
-        { group_name: "auth", key: "login.visible", value_bool: membershipSettings.loginVisible },
+        { group_name: "features", key: "auth.login.visible", value_bool: membershipSettings.loginVisible },
         { group_name: "features", key: "membership.buttons.visible", value_bool: membershipSettings.membershipButtonsVisible },
         { group_name: "features", key: "venue.buttons.visible", value_bool: membershipSettings.venueButtonsVisible },
       ];
@@ -702,13 +709,15 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
 
   // Loaders for Website UI
   const loadTestimonials = async () => {
+    setLoadingTestimonials(true);
     try {
       const { data } = await supabase
         .from("testimonials")
-        .select("id,name,content,image,created_at")
+        .select("id,name,content,image,rating,created_at")
         .order("created_at", { ascending: false });
       setTestimonials(data || []);
     } catch {}
+    setLoadingTestimonials(false);
   };
   const loadContactInfoData = async () => {
     try {
@@ -718,7 +727,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
         .limit(1);
       const row = (data && data[0]) || null;
       setContactInfo({
-        address: row?.address || "",
+        address: Array.isArray(row?.address) ? (row!.address as string[]).join("\n") : (row?.address || ""),
         emails: Array.isArray(row?.emails) && row!.emails.length > 0 ? row!.emails : ["",""],
         phones: Array.isArray(row?.phones) && row!.phones.length > 0 ? row!.phones : ["","",""]
       });
@@ -728,7 +737,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
     try {
       const { data } = await supabase
         .from("social_links")
-        .select("facebook,instagram,twitter,linkedin,youtube")
+        .select("facebook,instagram,twitter,linkedin,youtube,whatsapp")
         .limit(1);
       const row = (data && data[0]) || {};
       setSocialLinks(row || {});
@@ -736,7 +745,9 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
   };
 
   // Loaders for Subscription
+  const [loadingPlans, setLoadingPlans] = useState<boolean>(false);
   const loadPlans = async () => {
+    setLoadingPlans(true);
     try {
       const { data } = await supabase
         .from("membership_plans")
@@ -744,6 +755,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
         .order("created_at", { ascending: false });
       setPlans(data || []);
     } catch {}
+    setLoadingPlans(false);
   };
 
   const loadPlanUserCounts = async () => {
@@ -861,7 +873,9 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
   };
 
   // Loaders for Others
+  const [loadingFaqsAdmin, setLoadingFaqsAdmin] = useState<boolean>(false);
   const loadFaqs = async () => {
+    setLoadingFaqsAdmin(true);
     try {
       const { data } = await supabase
         .from("faqs")
@@ -869,17 +883,20 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
         .order("created_at", { ascending: false });
       setFaqs(data || []);
     } catch {}
+    setLoadingFaqsAdmin(false);
   };
   const loadVaRequests = async () => {
     try {
       const { data } = await supabase
         .from("virtual_assistance_requests")
-        .select("id,created_at,name,email,phone,topic,details,status")
+        .select("id,created_at,name,email,phone,service,status,task_details")
         .order("created_at", { ascending: false });
       setVaRequests(data || []);
     } catch {}
   };
+  const [loadingVouchers, setLoadingVouchers] = useState<boolean>(false);
   const loadVouchers = async () => {
+    setLoadingVouchers(true);
     try {
       const { data } = await supabase
         .from("vouchers")
@@ -887,8 +904,11 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
         .order("created_at", { ascending: false });
       setVouchers(data || []);
     } catch {}
+    setLoadingVouchers(false);
   };
+  const [loadingPages, setLoadingPages] = useState<boolean>(false);
   const loadPagesList = async () => {
+    setLoadingPages(true);
     try {
       const { data } = await supabase
         .from("pages")
@@ -896,17 +916,18 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
         .order("created_at", { ascending: false });
       setPagesList(data || []);
     } catch {}
+    setLoadingPages(false);
   };
 
   // CRUD helpers: Testimonials
   const openAddTestimonial = () => {
     setEditingTestimonial(null);
-    setTestimonialForm({ name: "", content: "", image: "" });
+    setTestimonialForm({ name: "", content: "", image: "", rating: 5 });
     setTestimonialDialogOpen(true);
   };
   const openEditTestimonial = (t: any) => {
     setEditingTestimonial(t);
-    setTestimonialForm({ name: t.name || "", content: t.content || "", image: t.image || "" });
+    setTestimonialForm({ name: t.name || "", content: t.content || "", image: t.image || "", rating: Number(t.rating) || 5 });
     setTestimonialDialogOpen(true);
   };
   const deleteTestimonial = async (id: string) => {
@@ -927,20 +948,20 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
       if (editingTestimonial) {
         const { error } = await supabase
           .from("testimonials")
-          .update({ name: testimonialForm.name, content: testimonialForm.content, image: imgUrl })
+          .update({ name: testimonialForm.name, content: testimonialForm.content, image: imgUrl, rating: Number(testimonialForm.rating) })
           .eq("id", editingTestimonial.id);
         if (error) throw new Error(error.message);
         toast({ title: "Updated", description: "Testimonial updated" });
       } else {
         const { error } = await supabase
           .from("testimonials")
-          .insert({ name: testimonialForm.name, content: testimonialForm.content, image: imgUrl });
+          .insert({ name: testimonialForm.name, content: testimonialForm.content, image: imgUrl, rating: Number(testimonialForm.rating) });
         if (error) throw new Error(error.message);
         toast({ title: "Added", description: "Testimonial added" });
       }
       setTestimonialDialogOpen(false);
       setEditingTestimonial(null);
-      setTestimonialForm({ name: "", content: "", image: "" });
+      setTestimonialForm({ name: "", content: "", image: "", rating: 5 });
       await loadTestimonials();
     } catch (e: any) { toast({ title: "Error", description: e?.message ?? "Unknown error", variant: "destructive" }); }
   };
@@ -952,8 +973,8 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
   const saveFaq = async () => { try { if (editingFaq) { const { error } = await supabase.from("faqs").update({ question: faqForm.question, answer: faqForm.answer }).eq("id", editingFaq.id); if (error) throw new Error(error.message); toast({ title: "Updated", description: "FAQ updated" }); } else { const { error } = await supabase.from("faqs").insert({ question: faqForm.question, answer: faqForm.answer }); if (error) throw new Error(error.message); toast({ title: "Added", description: "FAQ added" }); } setFaqDialogOpen(false); setEditingFaq(null); setFaqForm({ question: "", answer: "" }); await loadFaqs(); } catch(e:any){ toast({ title:"Error", description:e?.message ?? "Unknown error", variant:"destructive" }); } };
 
   // CRUD helpers: Vouchers
-  const openAddVoucher = () => { setEditingVoucher(null); setVoucherForm({ code: "", description: "", type: "fixed", value: 0, currency: "USD", usage_limit: 1, valid_from: "", valid_to: "", is_active: true }); setVoucherDialogOpen(true); };
-  const openEditVoucher = (v: any) => { setEditingVoucher(v); setVoucherForm({ code: v.code || "", description: v.description || "", type: v.type || "fixed", value: Number(v.value) || 0, currency: v.currency || "USD", usage_limit: v.usage_limit || 1, valid_from: v.valid_from || "", valid_to: v.valid_to || "", is_active: !!v.is_active }); setVoucherDialogOpen(true); };
+  const openAddVoucher = () => { setEditingVoucher(null); setVoucherForm({ code: "", description: "", type: "percentage", value: 0, currency: "NGN", usage_limit: 1, valid_from: "", valid_to: "", is_active: true }); setVoucherDialogOpen(true); };
+  const openEditVoucher = (v: any) => { setEditingVoucher(v); setVoucherForm({ code: v.code || "", description: v.description || "", type: v.type || "percentage", value: Number(v.value) || 0, currency: v.currency || "NGN", usage_limit: v.usage_limit || 1, valid_from: v.valid_from || "", valid_to: v.valid_to || "", is_active: !!v.is_active }); setVoucherDialogOpen(true); };
   const deleteVoucher = async (id: string) => { try { const { error } = await supabase.from("vouchers").delete().eq("id", id); if (error) throw new Error(error.message); toast({ title: "Deleted", description: "Voucher deleted" }); await loadVouchers(); } catch(e:any){ toast({ title:"Error", description:e?.message ?? "Unknown error", variant:"destructive" }); } };
   const saveVoucher = async () => { try { const payload: any = { code: voucherForm.code, description: voucherForm.description, type: voucherForm.type, value: Number(voucherForm.value), currency: voucherForm.currency, usage_limit: voucherForm.usage_limit, valid_from: voucherForm.valid_from || null, valid_to: voucherForm.valid_to || null, is_active: voucherForm.is_active }; if (editingVoucher) { const { error } = await supabase.from("vouchers").update(payload).eq("id", editingVoucher.id); if (error) throw new Error(error.message); toast({ title: "Updated", description: "Voucher updated" }); } else { const { error } = await supabase.from("vouchers").insert(payload); if (error) throw new Error(error.message); toast({ title: "Added", description: "Voucher added" }); } setVoucherDialogOpen(false); setEditingVoucher(null); await loadVouchers(); } catch(e:any){ toast({ title:"Error", description:e?.message ?? "Unknown error", variant:"destructive" }); } };
 
@@ -1004,10 +1025,10 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
         // Lists
         setContactsLoading(true);
         setNewsletterLoading(true);
-        // Contacts list now sourced from newsletter_subscriptions
+        // Contacts list sourced from contact_submissions
         const contactsRes = await supabase
-          .from("newsletter_subscriptions")
-          .select("id, created_at, email, source, path, referrer, user_agent, status")
+          .from("contact_submissions")
+          .select("id, created_at, name, email, phone, subject, message, status")
           .order("created_at", { ascending: false })
           .limit(10);
         const bookingsRes = await supabase
@@ -1017,7 +1038,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
           .limit(10);
         const newsletterRes = await supabase
           .from("newsletter_subscriptions")
-          .select("id, created_at, email, source, path, referrer, user_agent, status")
+          .select("id, created_at, email, source, path, referrer, user_agent, confirmed")
           .order("created_at", { ascending: false })
           .limit(10);
         const adminsRes = await supabase
@@ -1193,39 +1214,72 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                   </CardHeader>
                   <CardContent>
                     {newsletterLoading ? (
-                      <div className="space-y-3 animate-pulse">
+                      <div className="space-y-2 animate-pulse">
                         {Array.from({ length: 5 }).map((_, i) => (
-                          <div key={i} className="flex items-center justify-between border-b pb-2">
-                            <div className="space-y-2">
-                              <div className="h-4 w-40 bg-muted rounded" />
-                              <div className="h-3 w-24 bg-muted rounded" />
-                            </div>
-                            <div className="h-3 w-24 bg-muted rounded" />
+                          <div key={i} className="grid grid-cols-7 gap-2 items-center">
+                            <div className="h-4 bg-muted rounded col-span-2" />
+                            <div className="h-4 bg-muted rounded col-span-1" />
+                            <div className="h-4 bg-muted rounded col-span-1" />
+                            <div className="h-4 bg-muted rounded col-span-1" />
+                            <div className="h-4 bg-muted rounded col-span-1" />
+                            <div className="h-4 bg-muted rounded col-span-1" />
                           </div>
                         ))}
                       </div>
                     ) : newsletterSubs.length === 0 ? (
                       <p className="text-muted-foreground">No newsletter subscriptions yet.</p>
                     ) : (
-                      <div className="space-y-3">
-                        {newsletterSubs.slice(0,5).map((n) => (
-                          <div key={n.id} className="flex items-center justify-between border-b pb-2">
-                            <div>
-                              <div className="font-medium">{n.name ?? n.email}</div>
-                              <div className="text-sm text-muted-foreground">{n.source ?? "website"}</div>
-                            </div>
-                            <div className="text-sm text-muted-foreground">{new Date(n.created_at).toLocaleString()}</div>
-                          </div>
-                        ))}
-                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Source</TableHead>
+                            <TableHead>Path</TableHead>
+                            <TableHead>Referrer</TableHead>
+                            <TableHead>User Agent</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Created</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {newsletterSubs.slice(0,5).map((n) => {
+                            const statusLabel = typeof n.confirmed === "boolean"
+                              ? (n.confirmed ? "active" : "unsubscribed")
+                              : (n.status || "-");
+                            const statusClass = statusLabel === "active"
+                              ? "bg-green-100 text-green-700"
+                              : statusLabel === "unsubscribed"
+                                ? "bg-gray-100 text-gray-700"
+                                : "bg-yellow-100 text-yellow-700";
+                            return (
+                              <TableRow key={n.id}>
+                                <TableCell className="max-w-[220px] truncate">{n.email}</TableCell>
+                                <TableCell className="max-w-[160px] truncate">{n.source || "-"}</TableCell>
+                                <TableCell className="max-w-[160px] truncate">{n.path || "-"}</TableCell>
+                                <TableCell className="max-w-[200px] truncate">{n.referrer || "-"}</TableCell>
+                                <TableCell className="max-w-[240px] truncate">{n.user_agent || "-"}</TableCell>
+                                <TableCell>
+                                  <Badge className={statusClass}>{statusLabel}</Badge>
+                                </TableCell>
+                                <TableCell>{new Date(n.created_at).toLocaleString()}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
                     )}
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Latest Bookings</CardTitle>
-                    <CardDescription>Recent concierge service requests</CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Latest Bookings</CardTitle>
+                      <CardDescription>Recent concierge service requests</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => { setActiveTab("membership"); setMembershipTab("bookings"); }} aria-label="See more">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     {bookings.length === 0 ? (
@@ -1252,9 +1306,14 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Admin Team</CardTitle>
-                    <CardDescription>List of administrators</CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Admin Team</CardTitle>
+                      <CardDescription>List of administrators</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => { setActiveTab("membership"); setMembershipTab("admins"); }} aria-label="See more">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     {/* Transparent 'Me' card to signify current logged-in admin */}
@@ -1277,7 +1336,12 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                               {a.full_name ?? a.email}
                               {userId && a.id === userId ? (<Badge variant="outline" className="ml-2">Me</Badge>) : null}
                             </div>
-                            <div className="text-sm text-muted-foreground">{new Date(a.created_at).toLocaleString()}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm text-muted-foreground">{new Date(a.created_at).toLocaleString()}</div>
+                              <Button variant="ghost" size="icon" title="Send Email" onClick={() => { setSingleEmailRecipient({ email: a.email, full_name: a.full_name || null }); setSingleEmailSubject(""); setSingleEmailBody(""); setSingleEmailOpen(true); }}>
+                                <Mail className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1290,7 +1354,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
 
             {activeTab === "contacts" && (
               <div className="space-y-6">
-                <h2 className="text-3xl font-bold text-primary">Contacts (Newsletter Subscriptions)</h2>
+                <h2 className="text-3xl font-bold text-primary">Contacts</h2>
                 <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
                   <Input placeholder="Search name or email..." value={contactsSearch} onChange={(e)=> setContactsSearch(e.target.value)} className="w-full sm:w-64" />
                   <div className="flex items-center gap-2">
@@ -1298,12 +1362,12 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                       <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button variant="outline" onClick={() => { setContactsStatusFilter("all"); setContactsSearch(""); }}>Reset</Button>
-                    <Button variant="outline" onClick={() => exportToCsv(contacts.map(c => ({ id: c.id, email: c.email, source: c.source, path: c.path, referrer: c.referrer, user_agent: c.user_agent, status: c.status, created_at: c.created_at })), "contacts.csv")}>Export CSV</Button>
+                    <Button variant="outline" onClick={() => exportToCsv(contacts.map(c => ({ id: c.id, name: c.name, email: c.email, phone: c.phone, subject: c.subject, status: c.status, created_at: c.created_at })), "contacts.csv")}>Export CSV</Button>
                     <Button onClick={() => setBulkEmailOpen(true)}>Bulk Email</Button>
                   </div>
                 </div>
@@ -1321,15 +1385,15 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                         ))}
                       </div>
                     ) : contacts.length === 0 ? (
-                      <p className="text-muted-foreground">No newsletter subscriptions found.</p>
+                      <p className="text-muted-foreground">No contact submissions found.</p>
                     ) : (
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Select</TableHead>
+                            <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
-                            <TableHead>Source</TableHead>
-                            <TableHead>Path</TableHead>
+                            <TableHead>Subject</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Created</TableHead>
                             <TableHead>Actions</TableHead>
@@ -1337,28 +1401,34 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                         </TableHeader>
                         <TableBody>
                           {contacts
-                            .filter((c)=> (c.email||"").toLowerCase().includes(contactsSearch.toLowerCase()))
-                            .filter((c)=> contactsStatusFilter === "all" ? true : (c.status||"active") === contactsStatusFilter)
+                            .filter((c)=> (c.name||c.email||"").toLowerCase().includes(contactsSearch.toLowerCase()))
+                            .filter((c)=> contactsStatusFilter === "all" ? true : (c.status||"pending") === contactsStatusFilter)
                             .map((c) => (
                               <TableRow key={c.id}>
                                 <TableCell>
                                   <input type="checkbox" checked={selectedContacts.has(c.id)} onChange={(e)=>{ const next = new Set(selectedContacts); if (e.target.checked) next.add(c.id); else next.delete(c.id); setSelectedContacts(next); }} />
                                 </TableCell>
+                                <TableCell>{c.name || c.email}</TableCell>
                                 <TableCell>{c.email}</TableCell>
-                                <TableCell className="max-w-[200px] truncate">{c.source || "-"}</TableCell>
-                                <TableCell className="max-w-[280px] truncate">{c.path || "-"}</TableCell>
+                                <TableCell className="max-w-[240px] truncate">{c.subject}</TableCell>
                                 <TableCell>
-                                  <Badge className={(c.status === "active") ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>{c.status || "active"}</Badge>
+                                  <Badge className={(c.status === "resolved") ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}>{c.status || "pending"}</Badge>
                                 </TableCell>
                                 <TableCell>{new Date(c.created_at).toLocaleString()}</TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
+                                    <Button variant="ghost" size="icon" title="Preview" onClick={() => { setContactPreviewItem(c); setContactPreviewOpen(true); }}>
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" title="Send Email" onClick={() => { setSingleEmailRecipient({ email: c.email, full_name: c.name || null }); setSingleEmailSubject(""); setSingleEmailBody(""); setSingleEmailOpen(true); }}>
+                                      <Mail className="h-4 w-4" />
+                                    </Button>
                                     <label className="inline-flex items-center gap-2 text-xs">
-                                      <input type="checkbox" checked={(c.status||"active") === "unsubscribed"} onChange={async (e)=>{ try { await supabase.from("newsletter_subscriptions").update({ status: e.target.checked ? "unsubscribed" : "active" }).eq("id", c.id); const { data } = await supabase
-                                        .from("newsletter_subscriptions")
-                                        .select("id, created_at, email, source, path, referrer, user_agent, status")
+                                      <input type="checkbox" checked={(c.status||"pending") === "resolved"} onChange={async (e)=>{ try { await supabase.from("contact_submissions").update({ status: e.target.checked ? "resolved" : "pending" }).eq("id", c.id); const { data } = await supabase
+                                        .from("contact_submissions")
+                                        .select("id, created_at, name, email, phone, subject, message, status")
                                         .order("created_at", { ascending: false }); setContacts(data || []); } catch (err:any) { toast({ title:"Error", description: err?.message ?? "Unknown error", variant:"destructive" }); } }} />
-                                      Unsubscribed
+                                      Resolved
                                     </label>
                                   </div>
                                 </TableCell>
@@ -2028,7 +2098,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                                       <Button variant="ghost" size="icon" title="Preview" onClick={() => { setBookingPreviewItem(b); setBookingPreviewOpen(true); }}>
                                         <Eye className="h-4 w-4" />
                                       </Button>
-                                      <Button variant="ghost" size="icon" title="Email" onClick={() => { const subject = encodeURIComponent("Regarding your booking"); const body = encodeURIComponent("Hello,\n\nWe are following up on your request."); window.location.href = `mailto:${b.email}?subject=${subject}&body=${body}`; }}>
+                                      <Button variant="ghost" size="icon" title="Email" onClick={() => { setSingleEmailRecipient({ email: b.email, full_name: b.name || null }); setSingleEmailSubject(""); setSingleEmailBody(""); setSingleEmailOpen(true); }}>
                                         <Mail className="h-4 w-4" />
                                       </Button>
                                       <label className="inline-flex items-center gap-2 text-xs">
@@ -2098,6 +2168,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                               </SelectContent>
                             </Select>
                             <Button variant="outline" onClick={() => { setSelectedVa(new Set()); setVaStatusFilter("all"); setVaSearch(""); }}>Reset</Button>
+                            <Button variant="outline" onClick={() => setVaBulkEmailOpen(true)}>Bulk Email</Button>
                           </div>
                         </div>
                         {vaRequests.length === 0 ? (
@@ -2127,8 +2198,8 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                                   </TableCell>
                                   <TableCell>{r.name || r.email}</TableCell>
                                   <TableCell>{r.email}</TableCell>
-                                  <TableCell>{r.topic || "-"}</TableCell>
-                                  <TableCell className="max-w-[280px] truncate">{r.details || "-"}</TableCell>
+                                  <TableCell>{r.service || "-"}</TableCell>
+                                  <TableCell className="max-w-[280px] truncate">{r.task_details || "-"}</TableCell>
                                   <TableCell>
                                     <Badge className={(r.status === "closed") ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}>{r.status || "pending"}</Badge>
                                   </TableCell>
@@ -2138,7 +2209,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                                       <Button variant="ghost" size="icon" title="Preview" onClick={() => { setBookingPreviewItem(r); setBookingPreviewOpen(true); }}>
                                         <Eye className="h-4 w-4" />
                                       </Button>
-                                      <Button variant="ghost" size="icon" title="Email" onClick={() => { const subject = encodeURIComponent("Regarding your request"); const body = encodeURIComponent("Hello,\n\nWe are following up on your request."); window.location.href = `mailto:${r.email}?subject=${subject}&body=${body}`; }}>
+                                      <Button variant="ghost" size="icon" title="Email" onClick={() => { setSingleEmailRecipient({ email: r.email, full_name: r.name || null }); setSingleEmailSubject(""); setSingleEmailBody(""); setSingleEmailOpen(true); }}>
                                         <Mail className="h-4 w-4" />
                                       </Button>
                                       <label className="inline-flex items-center gap-2 text-xs">
@@ -2157,6 +2228,40 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                         )}
                       </CardContent>
                     </Card>
+                    {/* Bulk Email to Virtual Assistance Requests Dialog */}
+                    <Dialog open={vaBulkEmailOpen} onOpenChange={setVaBulkEmailOpen}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Bulk Email to Virtual Assistance Requests</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-3">
+                          <Label>Subject</Label>
+                          <Input value={bulkVaSubject} onChange={(e) => setBulkVaSubject(e.target.value)} placeholder="Subject" />
+                          <Label>Message</Label>
+                          <Textarea value={bulkVaBody} onChange={(e) => setBulkVaBody(e.target.value)} placeholder="Write your email..." />
+                          <p className="text-sm text-muted-foreground">Recipients: {selectedVa.size || vaRequests.length} {selectedVa.size ? "(selected)" : "(all)"}</p>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setVaBulkEmailOpen(false)}>Cancel</Button>
+                          <Button onClick={async () => {
+                            try {
+                              const recipients = (selectedVa.size ? vaRequests.filter(r => selectedVa.has(r.id)) : vaRequests).map(r => ({ email: r.email, name: r.name || null }));
+                              const { data: campaign } = await supabase.from("email_campaigns").insert({ subject: bulkVaSubject, body: bulkVaBody, status: "draft" }).select("id").maybeSingle();
+                              if (campaign?.id) {
+                                await supabase.from("email_campaign_recipients").insert(recipients.map(r => ({ campaign_id: campaign.id, email: r.email, name: r.name })));
+                              }
+                              toast({ title: "Campaign saved", description: "Recipients added." });
+                              setVaBulkEmailOpen(false);
+                              setBulkVaSubject("");
+                              setBulkVaBody("");
+                              setSelectedVa(new Set());
+                            } catch (e: any) {
+                              toast({ title: "Error", description: e?.message ?? "Unknown error", variant: "destructive" });
+                            }
+                          }}>Save Campaign</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </TabsContent>
                 </Tabs>
                 {/* Newsletter & Contact Dialogs moved to global mount */}
@@ -2348,7 +2453,17 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                         </div>
                         <Card>
                           <CardContent className="pt-6">
-                            {testimonials.length === 0 ? (
+                            {loadingTestimonials ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                  <div key={i} className="rounded-xl ring-1 ring-border p-4 space-y-2">
+                                    <div className="h-4 w-40 bg-muted animate-pulse rounded" />
+                                    <div className="h-3 w-full bg-muted animate-pulse rounded" />
+                                    <div className="h-3 w-2/3 bg-muted animate-pulse rounded" />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : testimonials.length === 0 ? (
                               <div className="text-center py-8 text-muted-foreground">No testimonials yet.</div>
                             ) : (
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -2360,6 +2475,11 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                                         <Button size="sm" variant="outline" onClick={() => openEditTestimonial(t)}>Edit</Button>
                                         <Button size="sm" variant="destructive" onClick={() => deleteTestimonial(t.id)}>Delete</Button>
                                       </div>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-primary" aria-label={`Rating ${Number(t.rating) || 0} out of 5`}>
+                                      {Array.from({ length: 5 }).map((_, i) => (
+                                        <Star key={i} className={`h-4 w-4 ${i < (Number(t.rating) || 0) ? 'fill-primary text-primary' : 'text-muted-foreground'}`} fill={i < (Number(t.rating) || 0) ? 'currentColor' : 'none'} />
+                                      ))}
                                     </div>
                                     <div className="text-sm text-muted-foreground">{t.content}</div>
                                   </div>
@@ -2374,6 +2494,26 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2"><Label>Name</Label><Input value={testimonialForm.name} onChange={(e)=> setTestimonialForm({ ...testimonialForm, name: e.target.value })} /></div>
                               <div className="space-y-2 md:col-span-2"><Label>Content</Label><Textarea value={testimonialForm.content} onChange={(e)=> setTestimonialForm({ ...testimonialForm, content: e.target.value })} rows={4} /></div>
+                              <div className="space-y-2 md:col-span-2">
+                                <Label>Rating</Label>
+                                <div className="space-y-2">
+                                  <Slider
+                                    value={[Number(testimonialForm.rating)]}
+                                    onValueChange={(v) => setTestimonialForm({ ...testimonialForm, rating: Number(v[0] || 5) })}
+                                    min={1}
+                                    max={5}
+                                    step={1}
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1 text-primary">
+                                      {Array.from({ length: 5 }).map((_, i) => (
+                                        <Star key={i} className={`h-5 w-5 ${i < Number(testimonialForm.rating) ? 'fill-primary text-primary' : 'text-muted-foreground'}`} fill={i < Number(testimonialForm.rating) ? 'currentColor' : 'none'} />
+                                      ))}
+                                    </div>
+                                    <span className="text-sm text-muted-foreground">{Number(testimonialForm.rating)} / 5</span>
+                                  </div>
+                                </div>
+                              </div>
                               <div className="space-y-2 md:col-span-2"><Label>Image</Label><Input type="file" accept="image/*" onChange={(e)=> setBlogImageFile((e.target.files && e.target.files[0]) || null)} /></div>
                             </div>
                             <DialogFooter>
@@ -2386,7 +2526,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                       <TabsContent value="contact">
                         <Card>
                           <CardContent className="pt-6 space-y-4">
-                            <div className="space-y-2"><Label>Address</Label><Input value={contactInfo.address} onChange={(e)=> setContactInfo({ ...contactInfo, address: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Address</Label><Textarea rows={3} value={contactInfo.address} onChange={(e)=> setContactInfo({ ...contactInfo, address: e.target.value })} placeholder={"Line 1\nLine 2\nLine 3"} /></div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                               {contactInfo.emails.map((em, idx)=>(
                                 <Input key={idx} placeholder={`Email ${idx+1}`} value={em} onChange={(e)=> { const arr=[...contactInfo.emails]; arr[idx]=e.target.value; setContactInfo({ ...contactInfo, emails: arr }); }} />
@@ -2401,9 +2541,9 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                               try {
                                 const { data } = await supabase.from("contact_info").select("id").limit(1);
                                 if (data && data.length > 0) {
-                                  await supabase.from("contact_info").update({ address: contactInfo.address, emails: contactInfo.emails, phones: contactInfo.phones }).eq("id", data[0].id);
+                                  await supabase.from("contact_info").update({ address: (contactInfo.address || "").split("\n").filter(Boolean), emails: contactInfo.emails, phones: contactInfo.phones }).eq("id", data[0].id);
                                 } else {
-                                  await supabase.from("contact_info").insert({ address: contactInfo.address, emails: contactInfo.emails, phones: contactInfo.phones });
+                                  await supabase.from("contact_info").insert({ address: (contactInfo.address || "").split("\n").filter(Boolean), emails: contactInfo.emails, phones: contactInfo.phones });
                                 }
                                 await loadContactInfoData();
                                 toast({ title: "Saved", description: "Contact info updated" });
@@ -2416,7 +2556,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                         <Card>
                           <CardContent className="pt-6 space-y-2">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                              {Object.entries({ facebook:"Facebook", instagram:"Instagram", twitter:"Twitter", linkedin:"LinkedIn", youtube:"YouTube" }).map(([key,label])=> (
+                              {Object.entries({ facebook:"Facebook", instagram:"Instagram", twitter:"Twitter", linkedin:"LinkedIn", youtube:"YouTube", whatsapp:"WhatsApp" }).map(([key,label])=> (
                                 <div key={key} className="space-y-2"><Label>{label}</Label><Input value={(socialLinks as any)[key] || ""} onChange={(e)=> setSocialLinks({ ...socialLinks, [key]: e.target.value })} /></div>
                               ))}
                             </div>
@@ -2445,7 +2585,26 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                     <div className="flex items-center gap-2"><Input placeholder="Search plans..." className="w-full sm:w-64" /></div>
                     <Card>
                       <CardContent className="pt-6">
-                        {plans.length === 0 ? (
+                        {loadingPlans ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                              <div key={i} className="rounded-xl ring-1 ring-border p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                                    <div className="h-3 w-32 bg-muted animate-pulse rounded mt-1" />
+                                  </div>
+                                  <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+                                </div>
+                                <div className="flex gap-2">
+                                  <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+                                  <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+                                  <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : plans.length === 0 ? (
                           <div className="text-center py-8 text-muted-foreground">No plans yet.</div>
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -2650,7 +2809,16 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                         <div className="flex justify-end mb-3"><Button onClick={openAddFaq}>Add FAQ</Button></div>
                         <Card>
                           <CardContent className="pt-6">
-                            {faqs.length === 0 ? (<div className="text-center py-8 text-muted-foreground">No FAQs yet.</div>) : (
+                            {loadingFaqsAdmin ? (
+                              <div className="space-y-3">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                  <div key={i} className="rounded-xl ring-1 ring-border p-4">
+                                    <div className="h-4 w-48 bg-muted animate-pulse rounded mb-2" />
+                                    <div className="h-3 w-full bg-muted animate-pulse rounded" />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : faqs.length === 0 ? (<div className="text-center py-8 text-muted-foreground">No FAQs yet.</div>) : (
                               <div className="space-y-3">
                                 {faqs.map((f)=>(
                                   <div key={f.id} className="rounded-xl ring-1 ring-border p-4">
@@ -2687,7 +2855,21 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                         <div className="flex justify-end mb-3"><Button onClick={openAddVoucher}>Add Voucher</Button></div>
                         <Card>
                           <CardContent className="pt-6">
-                            {vouchers.length === 0 ? (
+                            {loadingVouchers ? (
+                              <div className="space-y-3">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <div key={i} className="grid grid-cols-2 md:grid-cols-7 gap-2 items-center">
+                                    <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+                                    <div className="h-3 w-16 bg-muted animate-pulse rounded" />
+                                    <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                                    <div className="h-3 w-16 bg-muted animate-pulse rounded" />
+                                    <div className="h-3 w-16 bg-muted animate-pulse rounded" />
+                                    <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+                                    <div className="h-8 w-24 bg-muted animate-pulse rounded justify-self-end" />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : vouchers.length === 0 ? (
                               <div className="text-center py-8 text-muted-foreground">No vouchers found.</div>
                             ) : (
                               <div className="space-y-3">
@@ -2695,7 +2877,11 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                                   <div key={v.id} className="grid grid-cols-2 md:grid-cols-7 gap-2 text-sm items-center">
                                     <div className="font-medium">{v.code}</div>
                                     <div>{v.type}</div>
-                                    <div>{typeof v.value === "number" ? `₦${Number(v.value).toLocaleString()}` : v.value} {v.currency}</div>
+                                    <div>
+                                      {v.type === "percentage"
+                                        ? `${Number(v.value)}%`
+                                        : `₦${Number(v.value).toLocaleString()} ${v.currency || "NGN"}`}
+                                    </div>
                                     <div className="text-muted-foreground">{v.usage_count ?? 0}/{v.usage_limit ?? "-"}</div>
                                     <div className="text-muted-foreground">{v.is_active ? "Active" : "Inactive"}</div>
                                     <div className="text-muted-foreground">{v.valid_to ? new Date(v.valid_to).toLocaleDateString() : "-"}</div>
@@ -2717,11 +2903,13 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                               <div className="space-y-2"><Label>Type</Label>
                                 <Select value={voucherForm.type} onValueChange={(v)=> setVoucherForm({ ...voucherForm, type: v })}>
                                   <SelectTrigger><SelectValue /></SelectTrigger>
-                                  <SelectContent><SelectItem value="fixed">fixed</SelectItem><SelectItem value="percent">percent</SelectItem></SelectContent>
+                                  <SelectContent><SelectItem value="fixed">fixed</SelectItem><SelectItem value="percentage">percentage</SelectItem></SelectContent>
                                 </Select>
                               </div>
                               <div className="space-y-2"><Label>Value</Label><Input type="number" value={voucherForm.value} onChange={(e)=> setVoucherForm({ ...voucherForm, value: Number(e.target.value) })} /></div>
-                              <div className="space-y-2"><Label>Currency</Label><Input value={voucherForm.currency} onChange={(e)=> setVoucherForm({ ...voucherForm, currency: e.target.value })} /></div>
+                              {voucherForm.type === "fixed" && (
+                                <div className="space-y-2"><Label>Currency</Label><Input value={voucherForm.currency} onChange={(e)=> setVoucherForm({ ...voucherForm, currency: e.target.value })} /></div>
+                              )}
                               <div className="space-y-2"><Label>Usage Limit</Label><Input type="number" value={voucherForm.usage_limit} onChange={(e)=> setVoucherForm({ ...voucherForm, usage_limit: Number(e.target.value) })} /></div>
                               <div className="space-y-2"><Label>Valid From</Label><Input type="date" value={voucherForm.valid_from} onChange={(e)=> setVoucherForm({ ...voucherForm, valid_from: e.target.value })} /></div>
                               <div className="space-y-2"><Label>Valid To</Label><Input type="date" value={voucherForm.valid_to} onChange={(e)=> setVoucherForm({ ...voucherForm, valid_to: e.target.value })} /></div>
@@ -2738,7 +2926,21 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                       <TabsContent value="pages">
                         <Card>
                           <CardContent className="pt-6">
-                            {pagesList.length === 0 ? (
+                            {loadingPages ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                  <div key={i} className="rounded-xl ring-1 ring-border p-4 space-y-2">
+                                    <div className="h-4 w-36 bg-muted animate-pulse rounded" />
+                                    <div className="flex items-center justify-between text-sm">
+                                      <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                                      <div className="h-6 w-32 bg-muted animate-pulse rounded" />
+                                    </div>
+                                    <div className="h-3 w-40 bg-muted animate-pulse rounded" />
+                                    <div className="h-3 w-64 bg-muted animate-pulse rounded" />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : pagesList.length === 0 ? (
                               <div className="text-center py-8 text-muted-foreground">No pages found.</div>
                             ) : (
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -3297,6 +3499,7 @@ const [editingPlan, setEditingPlan] = useState<any | null>(null);
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setContactPreviewOpen(false)}>Close</Button>
+                  <Button onClick={() => { setSingleEmailRecipient({ email: contactPreviewItem?.email, full_name: contactPreviewItem?.name || null }); setSingleEmailSubject(""); setSingleEmailBody(""); setSingleEmailOpen(true); }}>Send Email</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

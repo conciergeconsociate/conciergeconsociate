@@ -9,10 +9,14 @@ import { mockVenues } from "@/data/mockData";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { MembershipPlans } from "@/components/MembershipPlans";
 import { ConciergeBookingSection } from "@/components/ConciergeBookingSection";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function VenueDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { flags } = useFeatureFlags();
+  const { userId } = useAuth();
 
   const [venue, setVenue] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +27,11 @@ export default function VenueDetails() {
 
   useEffect(() => {
     let isMounted = true;
+    // Guard: if venue visibility is off, redirect to Home
+    if (!flags.venueVisible) {
+      navigate("/");
+      return;
+    }
     setLoading(true);
     (async () => {
       try {
@@ -61,7 +70,7 @@ export default function VenueDetails() {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, flags.venueVisible]);
 
   if (loading) {
     return (
@@ -185,12 +194,14 @@ export default function VenueDetails() {
           </div>
         </section>
 
-        {/* Membership section */}
-        <section className="py-16 bg-[#FBFBFB]">
-          <div className="container">
-            <MembershipPlans />
-          </div>
-        </section>
+        {/* Membership section (hidden when flag is off for non-auth) */}
+        {(flags.membershipVisible || !!userId) && (
+          <section className="py-16 bg-[#FBFBFB]">
+            <div className="container">
+              <MembershipPlans />
+            </div>
+          </section>
+        )}
 
         {modalOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center" onClick={() => setModalOpen(false)}>

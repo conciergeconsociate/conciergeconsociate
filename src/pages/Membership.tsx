@@ -2,8 +2,26 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { MembershipPlans } from "@/components/MembershipPlans";
 import { TestimonialsSection } from "@/components/TestimonialsSection";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Membership() {
+  const { flags } = useFeatureFlags();
+  const { userId } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!flags.membershipVisible && !userId) {
+      navigate("/");
+    }
+  }, [flags.membershipVisible, userId]);
+
+  if (!flags.membershipVisible && !userId) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -57,7 +75,7 @@ export default function Membership() {
           </div>
         </section>
 
-        <MembershipPlans />
+        {(!!userId || flags.membershipVisible) && <MembershipPlans />}
         <TestimonialsSection />
       </main>
 
