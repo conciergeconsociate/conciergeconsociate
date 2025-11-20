@@ -133,9 +133,18 @@ export function CheckoutModal({ open, onOpenChange, plan }: { open: boolean; onO
         throw new Error(signUpError.message);
       }
 
-      // Send reset password email so the user can set their own
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
-      if (resetError) throw new Error(resetError.message);
+      // Send reset password email so the user can set their own via Resend-powered API
+      try {
+        const resp = await fetch(`/api/auth/reset-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, redirectTo: `${window.location.origin}/reset-password` }),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok || json?.ok !== true) throw new Error(json?.error || `Request failed (${resp.status})`);
+      } catch (e: any) {
+        throw new Error(e?.message || "Failed to send reset email");
+      }
 
       // Send user welcome/subscription email via Resend
       try {

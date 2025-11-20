@@ -39,7 +39,11 @@ if (supabaseUrl && supabaseAnonKey) {
         return { data: { subscription } };
       },
       signInWithPassword: async (_params: any) => ({ data: { session: null }, error: { message: 'Supabase not configured' } }),
+      signInWithOtp: async (_params: any) => ({ data: null, error: { message: 'Supabase not configured' } }),
       signOut: async () => ({ error: { message: 'Supabase not configured' } }),
+    },
+    functions: {
+      invoke: async (_name: string, _args?: any) => ({ data: null, error: { message: 'Supabase not configured' } }),
     },
   };
 }

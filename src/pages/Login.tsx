@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ForgotPasswordModal } from "@/components/modals/ForgotPasswordModal";
+import { SendMagicLinkModal } from "@/components/modals/SendMagicLinkModal";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [magicOpen, setMagicOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,11 +77,16 @@ export default function Login() {
                 <button type="button" className="text-sm text-primary underline" onClick={() => setForgotOpen(true)}>
                   Forgot your password?
                 </button>
+                <span className="mx-2 text-muted-foreground">•</span>
+                <button type="button" className="text-sm text-primary underline" onClick={() => setMagicOpen(true)}>
+                  Send magic link
+                </button>
               </div>
             </form>
           </CardContent>
         </Card>
         <ForgotPasswordModal open={forgotOpen} onOpenChange={setForgotOpen} />
+        <SendMagicLinkModal open={magicOpen} onOpenChange={setMagicOpen} />
       </main>
       <Footer />
     </div>

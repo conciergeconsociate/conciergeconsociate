@@ -60,6 +60,26 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Environment & Auth Email Setup
+
+This app can send authentication emails via Resend using serverless API routes on Vercel. This avoids Supabase free-plan email limits.
+
+Set these environment variables in your Vercel Project:
+
+- `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — Supabase client config
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — Supabase Admin credentials for server-side link generation
+- `RESEND_API_KEY` — Resend server key
+- `FROM_EMAIL`, `FROM_NAME` — Sender identity (e.g., `Consociate Concierge <business@consociateconcierge.com>`) or use `RESEND_FROM`
+
+Available API routes:
+
+- `POST /api/auth/magic-link` — body `{ email, redirectTo }`
+- `POST /api/auth/reset-password` — body `{ email, redirectTo }`
+- `POST /api/auth/confirm-signup` — body `{ email, password?, redirectTo, metadata? }`
+- `POST /api/auth/change-email` — body `{ newEmail, redirectTo }`, header `Authorization: Bearer <access_token>`
+
+Client modals are wired to use these endpoints for Magic Link, Reset Password, and Change Email flows.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/8c0dff3b-b833-4bd4-b862-e99fd7659db1) and click on Share -> Publish.

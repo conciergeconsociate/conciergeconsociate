@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 
-export function ForgotPasswordModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function SendMagicLinkModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -19,17 +19,17 @@ export function ForgotPasswordModal({ open, onOpenChange }: { open: boolean; onO
     }
     setSending(true);
     try {
-      const redirectTo = `${window.location.origin}/reset-password`;
-      const resp = await fetch(`/api/auth/reset-password`, {
+      const redirectTo = `${window.location.origin}/login`;
+      const resp = await fetch(`/api/auth/magic-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, redirectTo }),
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok || json?.ok !== true) throw new Error(json?.error || `Request failed (${resp.status})`);
-      setMessage("If an account exists for this email, a reset link has been sent.");
+      setMessage("If an account exists for this email, a magic link has been sent.");
     } catch (e: any) {
-      setError(e?.message ?? "Unable to send reset email");
+      setError(e?.message ?? "Unable to send magic link");
     } finally {
       setSending(false);
     }
@@ -39,9 +39,12 @@ export function ForgotPasswordModal({ open, onOpenChange }: { open: boolean; onO
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Forgot Password</DialogTitle>
+          <DialogTitle>Send Magic Link</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Enter your email and we’ll send you a one-time sign-in link.
+          </p>
           <div>
             <label className="block text-sm mb-1">Email Address</label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
@@ -51,7 +54,7 @@ export function ForgotPasswordModal({ open, onOpenChange }: { open: boolean; onO
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>Cancel</Button>
-          <Button onClick={handleSend} disabled={sending}>{sending ? "Sending…" : "Send Reset Link"}</Button>
+          <Button onClick={handleSend} disabled={sending}>{sending ? "Sending…" : "Send Magic Link"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

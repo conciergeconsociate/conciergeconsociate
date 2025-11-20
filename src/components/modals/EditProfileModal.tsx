@@ -167,8 +167,16 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
       }
       if (!newEmail) return;
       if (hasSupabase) {
-        const { error } = await supabase.auth.updateUser({ email: newEmail });
-        if (error) throw new Error(error.message);
+        const { data: sessionRes } = await supabase.auth.getSession();
+        const accessToken = sessionRes?.session?.access_token;
+        if (!accessToken) throw new Error("Not authenticated");
+        const resp = await fetch(`/api/auth/change-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+          body: JSON.stringify({ newEmail, redirectTo: `${window.location.origin}/login` }),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok || json?.ok !== true) throw new Error(json?.error || `Request failed (${resp.status})`);
       } else if (userId) {
         // Dev fallback: persist locally
         if (typeof localStorage !== "undefined") {
