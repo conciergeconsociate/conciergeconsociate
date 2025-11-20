@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
@@ -40,6 +40,7 @@ export function SendMagicLinkModal({ open, onOpenChange }: { open: boolean; onOp
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Send Magic Link</DialogTitle>
+          <DialogDescription>We’ll email a one-time sign-in link.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">

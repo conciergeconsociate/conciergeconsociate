@@ -27,6 +27,14 @@ export function getClients() {
   return { supabase, resend, from: RESEND_FROM };
 }
 
+export function getBaseUrl(req: VercelRequest) {
+  const proto = (req.headers["x-forwarded-proto"] as string) || "https";
+  const host = (req.headers["host"] as string) || process.env.VERCEL_URL || process.env.SITE_URL || "";
+  // If host already includes protocol, avoid double-prepending
+  if (/^https?:\/\//i.test(host)) return host;
+  return host ? `${proto}://${host}` : `${proto}://localhost:3000`;
+}
+
 export async function sendEmail(resend: Resend, from: string, to: string, subject: string, html: string) {
   const result = await resend.emails.send({ from, to, subject, html });
   if ((result as any)?.error) {

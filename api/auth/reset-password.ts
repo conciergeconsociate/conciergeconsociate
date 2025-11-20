@@ -1,12 +1,13 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getClients, badRequest, sendEmail } from "../_utils";
+import { getClients, badRequest, sendEmail, getBaseUrl } from "../_utils";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return badRequest(res, "Method not allowed", 405);
   try {
     const { email, redirectTo } = (typeof req.body === "string" ? JSON.parse(req.body) : req.body) || {};
     if (!email || !/.+@.+\..+/.test(email)) return badRequest(res, "Invalid email");
-    const redirect = typeof redirectTo === "string" && redirectTo.length > 0 ? redirectTo : `${req.headers.origin || process.env.SITE_URL || ""}/reset-password`;
+    const base = getBaseUrl(req);
+    const redirect = typeof redirectTo === "string" && redirectTo.length > 0 ? redirectTo : `${base}/reset-password`;
 
     const { supabase, resend, from } = getClients();
     const { data, error } = await supabase.auth.admin.generateLink({ type: "recovery", email, options: { redirectTo: redirect } } as any);
@@ -25,6 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sendEmail(resend, from, email, "Reset your password", html);
     return res.status(200).json({ ok: true });
   } catch (e: any) {
+    console.error("[api/auth/reset-password]", e);
     return badRequest(res, e?.message || "Reset password error", 500);
   }
 }

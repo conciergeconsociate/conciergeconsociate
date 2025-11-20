@@ -1,12 +1,13 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getClients, badRequest, sendEmail } from "../_utils";
+import { getClients, badRequest, sendEmail, getBaseUrl } from "../_utils";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return badRequest(res, "Method not allowed", 405);
   try {
     const { email, redirectTo } = (typeof req.body === "string" ? JSON.parse(req.body) : req.body) || {};
     if (!email || !/.+@.+\..+/.test(email)) return badRequest(res, "Invalid email");
-    const redirect = typeof redirectTo === "string" && redirectTo.length > 0 ? redirectTo : `${req.headers.origin || process.env.SITE_URL || ""}/login`;
+    const base = getBaseUrl(req);
+    const redirect = typeof redirectTo === "string" && redirectTo.length > 0 ? redirectTo : `${base}/login`;
 
     const { supabase, resend, from } = getClients();
     const { data, error } = await supabase.auth.admin.generateLink({ type: "magiclink", email, options: { redirectTo: redirect } } as any);
@@ -25,6 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sendEmail(resend, from, email, "Your magic sign-in link", html);
     return res.status(200).json({ ok: true });
   } catch (e: any) {
+    console.error("[api/auth/magic-link]", e);
     return badRequest(res, e?.message || "Magic link error", 500);
   }
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
@@ -40,6 +40,7 @@ export function ForgotPasswordModal({ open, onOpenChange }: { open: boolean; onO
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Forgot Password</DialogTitle>
+          <DialogDescription>Enter your email to receive a reset link.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
