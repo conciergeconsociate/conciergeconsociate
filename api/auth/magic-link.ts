@@ -11,7 +11,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { supabase, resend, from, logoUrl } = getClients();
     const { data, error } = await supabase.auth.admin.generateLink({ type: "magiclink", email, options: { redirectTo: redirect } } as any);
-    if (error) throw new Error(error.message);
+    if (error) {
+      const msg = error.message || "Unknown error";
+      // For magic link, some projects may block non-existent users; treat similarly to avoid 500
+      if (/user/i.test(msg) && /not\s*found/i.test(msg)) {
+        return res.status(200).json({ ok: true });
+      }
+      throw new Error(msg);
+    }
     const actionLink = (data as any)?.action_link;
     if (!actionLink) throw new Error("No action link generated");
 
