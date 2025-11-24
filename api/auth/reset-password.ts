@@ -32,6 +32,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ok: true });
   } catch (e: any) {
     console.error("[api/auth/reset-password]", e);
-    return badRequest(res, e?.message || "Reset password error", 500);
+    const msg = e?.message || "Reset password error";
+    const code = /rate|too many|exceed/i.test(msg) ? 429 : 500;
+    return badRequest(res, msg, code);
   }
 }
