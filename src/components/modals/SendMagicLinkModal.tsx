@@ -9,6 +9,7 @@ export function SendMagicLinkModal({ open, onOpenChange }: { open: boolean; onOp
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const hasSupabase = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   const handleSend = async () => {
     setError(null);
@@ -26,7 +27,15 @@ export function SendMagicLinkModal({ open, onOpenChange }: { open: boolean; onOp
         body: JSON.stringify({ email, redirectTo }),
       });
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok || json?.ok !== true) throw new Error(json?.error || `Request failed (${resp.status})`);
+      if (!resp.ok || json?.ok !== true) {
+        // Fallback: use Supabase client-side if serverless endpoint fails
+        if (hasSupabase) {
+          const { error: otpError } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+          if (otpError) throw new Error(otpError.message);
+        } else {
+          throw new Error(json?.error || `Request failed (${resp.status})`);
+        }
+      }
       setMessage("If an account exists for this email, a magic link has been sent.");
     } catch (e: any) {
       setError(e?.message ?? "Unable to send magic link");
