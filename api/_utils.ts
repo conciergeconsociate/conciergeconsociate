@@ -12,6 +12,7 @@ export function getClients() {
   const RESEND_API_KEY = process.env.RESEND_API_KEY as string | undefined;
   const FROM_EMAIL = process.env.FROM_EMAIL as string | undefined;
   const FROM_NAME = process.env.FROM_NAME as string | undefined;
+  const EMAIL_LOGO_URL = process.env.EMAIL_LOGO_URL as string | undefined;
   const RESEND_FROM = (process.env.RESEND_FROM as string | undefined) || (FROM_EMAIL && FROM_NAME ? `${FROM_NAME} <${FROM_EMAIL}>` : FROM_EMAIL || "no-reply@craftedcore.local");
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -24,7 +25,7 @@ export function getClients() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const resend = new Resend(RESEND_API_KEY);
 
-  return { supabase, resend, from: RESEND_FROM };
+  return { supabase, resend, from: RESEND_FROM, logoUrl: EMAIL_LOGO_URL };
 }
 
 export function getBaseUrl(req: VercelRequest) {
@@ -35,8 +36,8 @@ export function getBaseUrl(req: VercelRequest) {
   return host ? `${proto}://${host}` : `${proto}://localhost:3000`;
 }
 
-export async function sendEmail(resend: Resend, from: string, to: string, subject: string, html: string) {
-  const result = await resend.emails.send({ from, to, subject, html });
+export async function sendEmail(resend: Resend, from: string, to: string, subject: string, html: string, text?: string) {
+  const result = await resend.emails.send({ from, to, subject, html, text });
   if ((result as any)?.error) {
     throw new Error((result as any).error?.message || "Resend send failed");
   }
